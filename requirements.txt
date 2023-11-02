@@ -2,6 +2,6 @@ pandas
 matplotlib==3.8.1
 statsmodels
 scikit-learn
-streamlit=1.28.0
+streamlit==1.28.0
 sqlite3
 pickle
