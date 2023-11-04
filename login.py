@@ -78,7 +78,7 @@ def insert_user(username, password):
 
 def home_page():
     # Tampilan halaman utama setelah login
-    model = pickle.load(open('prediksi_sahamBBRI.sav', 'rb'))
+    model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
 
     df = pd.read_excel('BBRI.xlsx')
     df['date'] = pd.to_datetime(df['date'])
