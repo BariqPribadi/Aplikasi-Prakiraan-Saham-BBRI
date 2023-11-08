@@ -77,6 +77,7 @@ def insert_user(username, password):
     conn.commit()
 
 def home_page():
+    
     # Tampilan halaman utama setelah login
     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
 
@@ -88,27 +89,129 @@ def home_page():
     df['close'].fillna(method='ffill', inplace=True)
 
     st.title('Prakiraan Saham BBRI')
-    day = st.slider("Tentukan Hari", 1, 300, step=1)
 
-    pred = model.forecast(day)
-    pred = pd.DataFrame(pred, columns=['close'])
+    # Dropdown untuk tanggal awal prakiraan
+    start_date = pd.to_datetime('2023-05-26')
 
-    if st.button("Hasil"):
-        st.subheader("Hasil Prakiraan:")
-        st.dataframe(pred)
+    # Dropdown untuk tanggal awal
+    chosen_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=start_date, max_value=pd.to_datetime('2024-7-31'))
 
-        st.subheader("Grafik Prakiraan:")
-        fig, ax = plt.subplots(figsize=(24, 12))  # Set the figure size
-        df['close'].plot(color="blue", legend=True, label='Data Asli')
-        pred['close'].plot(color="orange", legend=True, label='Prakiraan')
-        st.pyplot(fig)
+    if chosen_date:
+        # Dropdown untuk tanggal akhir prakiraan
+        end_date = st.date_input("Pilih Batas Akhir Tanggal Prakiraan", min_value=chosen_date, max_value=pd.to_datetime('2024-7-31'))
+        end_date = pd.to_datetime(end_date)  # Konversi end_date ke pandas.Timestamp
+        
+        # Menghitung jumlah hari antara tanggal awal dan tanggal akhir
+        day = (end_date - start_date).days
+        pred = model.forecast(day)
+        pred = pd.DataFrame(pred, columns=['Harga'], index=pd.date_range(start=start_date, periods=day, freq='B'))
+        pred.index.name = "Tanggal"
+
+        # Konversi chosen_date ke datetime64[ns]
+        chosen_date = pd.to_datetime(chosen_date)
+
+        # Membagi data prediksi menjadi dua bagian: sebelum dan setelah chosen_date
+        pred_before_chosen_date = pred.loc[pred.index <= chosen_date]
+        pred_after_chosen_date = pred.loc[pred.index > chosen_date]
+
+        if st.button("Hasil"):
+            st.subheader("Hasil Prakiraan:")
+            st.dataframe(pred[chosen_date:end_date])
+
+            st.subheader("Grafik Prakiraan:")
+            fig, ax = plt.subplots(figsize=(24, 12))
+            df['close'].plot(color="blue", legend=True, label='Data Asli')
+            pred_before_chosen_date['Harga'].plot(color="orange", legend=True, label='Prakiraan dari 26 Mei 2023', linestyle='--')
+            pred_after_chosen_date['Harga'].plot(color="green", legend=True, label='Prakiraan Setelah Tanggal yang Dipilih')
+            ax.legend(fontsize=20)
+            ax.tick_params(axis='both', labelsize=18)
+            ax.set_xlabel("Tanggal", fontsize=20)
+            ax.set_ylabel("Harga Penutupan", fontsize=20)
+
+            st.pyplot(fig)
+
+
+# def home_page():
+#     # Tampilan halaman utama setelah login
+#     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
+
+#     df = pd.read_excel('BBRI.xlsx')
+#     df['date'] = pd.to_datetime(df['date'])
+#     df.set_index(['date'], inplace=True)
+#     df = df.asfreq('B')
+#     df.index.freq = 'B'
+#     df['close'].fillna(method='ffill', inplace=True)
+
+#     st.title('Prakiraan Saham BBRI')
+#     day = st.slider("Tentukan Hari", 1, 300, step=1)
+
+#     pred = model.forecast(day)
+#     pred = pd.DataFrame(pred, columns=['close'])
+
+#     if st.button("Hasil"):
+#         st.subheader("Hasil Prakiraan:")
+#         st.dataframe(pred)
+
+#         st.subheader("Grafik Prakiraan:")
+#         fig, ax = plt.subplots(figsize=(24, 12))  # Set the figure size
+#         df['close'].plot(color="blue", legend=True, label='Data Asli')
+#         pred['close'].plot(color="orange", legend=True, label='Prakiraan')
+#         st.pyplot(fig)
+
+# def home_page():
+#     # Tampilan halaman utama setelah login
+#     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
+
+#     df = pd.read_excel('BBRI.xlsx')
+#     df['date'] = pd.to_datetime(df['date'])
+#     df.set_index(['date'], inplace=True)
+#     df = df.asfreq('B')
+#     df.index.freq = 'B'
+#     df['close'].fillna(method='ffill', inplace=True)
+
+#     st.title('Prakiraan Saham BBRI')
+
+#     # Dropdown tanggal mulai prakiraan
+#     start_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=datetime.date(2023, 5, 26), max_value=(datetime.date(2023, 5, 26) + datetime.timedelta(days=300)))
+#     start_date = pd.to_datetime(start_date)  # Konversi ke datetime64[ns]
+    
+#     # Dropdown tanggal berakhir prakiraan
+#     end_date = st.date_input("Pilih Tanggal Berakhir Prakiraan", min_value=start_date, max_value=(datetime.date(2023, 5, 26) + datetime.timedelta(days=300)))
+#     end_date = pd.to_datetime(end_date)  # Konversi ke datetime64[ns]
+
+#     # Menghitung jumlah hari berdasarkan tanggal mulai dan berakhir
+#     day = (end_date - start_date).days
+
+#     # Menghitung prakiraan dengan model.predict() berdasarkan tanggal mulai dan berakhir
+#     pred = model.forecast(day)
+#     pred = pd.DataFrame(pred, columns=['close'])
+
+#     if st.button("Hasil"):
+#         st.subheader("Hasil Prakiraan:")
+#         st.dataframe(pred)
+
+#         st.subheader("Grafik Prakiraan:")
+#         fig, ax = plt.subplots(figsize=(24, 12))  # Set the figure size
+#         df['close'].plot(color="blue", legend=True, label='Data Asli')
+
+#         forecast_data = pred.copy()
+#         forecast_data['date'] = pd.date_range(start=start_date, periods=len(forecast_data))
+#         forecast_data.set_index(['date'], inplace=True)
+
+#         forecast_data['close'].plot(color="orange", legend=True, label='Prakiraan')
+
+#         plt.axvline(start_date, color='green', linestyle='--', label='Mulai Prakiraan')
+
+#         st.pyplot(fig)
+
+
 
 def main():
     manage_login_status()
     # Periksa status login sesi pengguna
     if st.session_state.logged_in:
         # Tambahkan tombol log out
-        logout_button = st.button("Log Out")
+        logout_button = st.button("Logout")
         if logout_button:
             st.session_state.logged_in = False
         home_page()
