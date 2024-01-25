@@ -17,6 +17,27 @@ def manage_login_status():
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
+def cover_page():
+    
+    col1, col2, col3 = st.columns([4,4,4])
+
+    with col2:
+        st.image("undip.png", use_column_width=True)
+        
+    # Tambahkan judul dengan rata tengah menggunakan HTML dan CSS
+    st.markdown("<h1 style='text-align: center; font-size: 30px;'>APLIKASI PRAKIRAAN HARGA SAHAM BERBASIS WEB MENGGUNAKAN METODE TRIPLE EXPONENTIAL SMOOTHING<br>(STUDI KASUS: PT BANK RAKYAT INDONESIA TBK)</h1>", unsafe_allow_html=True)
+
+    st.markdown("<p style='text-align: center; font-size: 20px;'><br>Bariq Unggul Pribadi<br>2120118120005</p>", unsafe_allow_html=True)
+
+    st.markdown("<p style='text-align: center; font-size: 22px;'><br>Universitas Diponegoro<br>2023</p>", unsafe_allow_html=True)
+
+    style = "<style>.row-widget.stButton {text-align: center;}</style>"
+    st.markdown(style, unsafe_allow_html=True)
+
+    if st.button("Login Page"):
+        st.experimental_set_query_params(page="login")
+    
+
 def login_page():
     # Tampilan halaman login
     st.title("Login")
@@ -31,12 +52,13 @@ def login_page():
             # Set status login
             st.session_state.logged_in = True
             # Reset halaman
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Login gagal. Mohon cek username dan password Anda.")
 
     # Tampilkan link signup
-    signup_link.markdown("[Signup](?signup=True)")
+    signup_link.markdown("[Signup](?page=signup)")
+
 
 def signup_page():
     # Tampilan halaman signup
@@ -57,7 +79,7 @@ def signup_page():
                 insert_user(new_username, new_password)
                 st.success("Akun berhasil dibuat. Silakan login.")
                 # Tampilkan tombol kembali ke halaman login
-                st.markdown("[Kembali ke Halaman Login](?signup=False)")
+                st.markdown("[Kembali ke Halaman Login](?page=login)")
 
 def validate_login(username, password):
     # Melakukan validasi login
@@ -77,7 +99,6 @@ def insert_user(username, password):
     conn.commit()
 
 def home_page():
-    
     # Tampilan halaman utama setelah login
     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
 
@@ -86,141 +107,77 @@ def home_page():
     df.set_index(['date'], inplace=True)
     df = df.asfreq('B')
     df.index.freq = 'B'
-    df['close'].fillna(method='ffill', inplace=True)
+    df['close'].ffill(inplace=True)
 
     st.title('Prakiraan Saham BBRI')
 
     # Dropdown untuk tanggal awal prakiraan
-    start_date = pd.to_datetime('2023-05-26')
+    start_date = pd.to_datetime('2023-10-19')
 
     # Dropdown untuk tanggal awal
-    chosen_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=start_date, max_value=pd.to_datetime('2024-7-31'))
+    chosen_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=start_date, max_value=pd.to_datetime('2024-10-19'))
 
     if chosen_date:
         # Dropdown untuk tanggal akhir prakiraan
-        end_date = st.date_input("Pilih Batas Akhir Tanggal Prakiraan", min_value=chosen_date, max_value=pd.to_datetime('2024-7-31'))
+        end_date = st.date_input("Pilih Batas Akhir Tanggal Prakiraan", max_value=pd.to_datetime('2024-10-19'))
         end_date = pd.to_datetime(end_date)  # Konversi end_date ke pandas.Timestamp
-        
-        # Menghitung jumlah hari antara tanggal awal dan tanggal akhir
-        day = (end_date - start_date).days
-        pred = model.forecast(day)
-        pred = pd.DataFrame(pred, columns=['Harga'], index=pd.date_range(start=start_date, periods=day, freq='B'))
-        pred.index.name = "Tanggal"
 
-        # Konversi chosen_date ke datetime64[ns]
-        chosen_date = pd.to_datetime(chosen_date)
+        # Validasi agar end_date tidak lebih awal daripada chosen_date
+        if end_date < chosen_date:
+            st.error("Batas Akhir Tanggal Prakiraan tidak boleh lebih awal daripada Tanggal Mulai Prakiraan.")
+        else:
+            # Menghitung jumlah hari antara tanggal awal dan tanggal akhir
+            day = (end_date - start_date).days
+            pred = model.forecast(day)
+            pred = pd.DataFrame(pred, columns=['Harga'], index=pd.date_range(start=start_date, periods=day, freq='B'))
+            pred.index.name = "Tanggal"
 
-        # Membagi data prediksi menjadi dua bagian: sebelum dan setelah chosen_date
-        pred_before_chosen_date = pred.loc[pred.index <= chosen_date]
-        pred_after_chosen_date = pred.loc[pred.index > chosen_date]
+            # Konversi chosen_date ke datetime64[ns]
+            chosen_date = pd.to_datetime(chosen_date)
 
-        if st.button("Hasil"):
-            st.subheader("Hasil Prakiraan:")
-            st.dataframe(pred[chosen_date:end_date])
+            # Membagi data prediksi menjadi dua bagian: sebelum dan setelah chosen_date
+            pred_before_chosen_date = pred.loc[pred.index <= chosen_date]
+            pred_after_chosen_date = pred.loc[pred.index > chosen_date]
 
-            st.subheader("Grafik Prakiraan:")
-            fig, ax = plt.subplots(figsize=(24, 12))
-            df['close'].plot(color="blue", legend=True, label='Data Asli')
-            pred_before_chosen_date['Harga'].plot(color="orange", legend=True, label='Prakiraan dari 26 Mei 2023', linestyle='--')
-            pred_after_chosen_date['Harga'].plot(color="green", legend=True, label='Prakiraan Setelah Tanggal yang Dipilih')
-            ax.legend(fontsize=20)
-            ax.tick_params(axis='both', labelsize=18)
-            ax.set_xlabel("Tanggal", fontsize=20)
-            ax.set_ylabel("Harga Penutupan", fontsize=20)
+            if st.button("Hasil"):
+                st.subheader("Hasil Prakiraan:")
+                st.dataframe(pred[chosen_date:end_date])
 
-            st.pyplot(fig)
+                st.subheader("Grafik Prakiraan:")
+                fig, ax = plt.subplots(figsize=(24, 12))
+                df['close'].plot(color="blue", legend=True, label='Data Asli')
+                pred_before_chosen_date['Harga'].plot(color="orange", legend=True, label='Prakiraan dari 19 Oktober 2023', linestyle='--')
+                pred_after_chosen_date['Harga'].plot(color="green", legend=True, label='Prakiraan Setelah Tanggal yang Dipilih')
+                ax.legend(fontsize=20)
+                ax.tick_params(axis='both', labelsize=18)
+                ax.set_xlabel("Tanggal", fontsize=20)
+                ax.set_ylabel("Harga Penutupan", fontsize=20)
 
-
-# def home_page():
-#     # Tampilan halaman utama setelah login
-#     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
-
-#     df = pd.read_excel('BBRI.xlsx')
-#     df['date'] = pd.to_datetime(df['date'])
-#     df.set_index(['date'], inplace=True)
-#     df = df.asfreq('B')
-#     df.index.freq = 'B'
-#     df['close'].fillna(method='ffill', inplace=True)
-
-#     st.title('Prakiraan Saham BBRI')
-#     day = st.slider("Tentukan Hari", 1, 300, step=1)
-
-#     pred = model.forecast(day)
-#     pred = pd.DataFrame(pred, columns=['close'])
-
-#     if st.button("Hasil"):
-#         st.subheader("Hasil Prakiraan:")
-#         st.dataframe(pred)
-
-#         st.subheader("Grafik Prakiraan:")
-#         fig, ax = plt.subplots(figsize=(24, 12))  # Set the figure size
-#         df['close'].plot(color="blue", legend=True, label='Data Asli')
-#         pred['close'].plot(color="orange", legend=True, label='Prakiraan')
-#         st.pyplot(fig)
-
-# def home_page():
-#     # Tampilan halaman utama setelah login
-#     model = pickle.load(open('prakiraan_sahamBBRI.sav', 'rb'))
-
-#     df = pd.read_excel('BBRI.xlsx')
-#     df['date'] = pd.to_datetime(df['date'])
-#     df.set_index(['date'], inplace=True)
-#     df = df.asfreq('B')
-#     df.index.freq = 'B'
-#     df['close'].fillna(method='ffill', inplace=True)
-
-#     st.title('Prakiraan Saham BBRI')
-
-#     # Dropdown tanggal mulai prakiraan
-#     start_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=datetime.date(2023, 5, 26), max_value=(datetime.date(2023, 5, 26) + datetime.timedelta(days=300)))
-#     start_date = pd.to_datetime(start_date)  # Konversi ke datetime64[ns]
-    
-#     # Dropdown tanggal berakhir prakiraan
-#     end_date = st.date_input("Pilih Tanggal Berakhir Prakiraan", min_value=start_date, max_value=(datetime.date(2023, 5, 26) + datetime.timedelta(days=300)))
-#     end_date = pd.to_datetime(end_date)  # Konversi ke datetime64[ns]
-
-#     # Menghitung jumlah hari berdasarkan tanggal mulai dan berakhir
-#     day = (end_date - start_date).days
-
-#     # Menghitung prakiraan dengan model.predict() berdasarkan tanggal mulai dan berakhir
-#     pred = model.forecast(day)
-#     pred = pd.DataFrame(pred, columns=['close'])
-
-#     if st.button("Hasil"):
-#         st.subheader("Hasil Prakiraan:")
-#         st.dataframe(pred)
-
-#         st.subheader("Grafik Prakiraan:")
-#         fig, ax = plt.subplots(figsize=(24, 12))  # Set the figure size
-#         df['close'].plot(color="blue", legend=True, label='Data Asli')
-
-#         forecast_data = pred.copy()
-#         forecast_data['date'] = pd.date_range(start=start_date, periods=len(forecast_data))
-#         forecast_data.set_index(['date'], inplace=True)
-
-#         forecast_data['close'].plot(color="orange", legend=True, label='Prakiraan')
-
-#         plt.axvline(start_date, color='green', linestyle='--', label='Mulai Prakiraan')
-
-#         st.pyplot(fig)
-
-
+                st.pyplot(fig)
 
 def main():
     manage_login_status()
+
+    # Check for the initial page query parameter
+    params = st.experimental_get_query_params()
+    initial_page = params.get("page", ["cover"])[0]
+
     # Periksa status login sesi pengguna
     if st.session_state.logged_in:
         # Tambahkan tombol log out
         logout_button = st.button("Logout")
         if logout_button:
             st.session_state.logged_in = False
+            # st.experimental_set_query_params(page="cover")
+            st.rerun()
         home_page()
+    elif initial_page == "signup":
+        signup_page()
+    elif initial_page == "login":
+        login_page()
     else:
-        signup = st.experimental_get_query_params().get("signup")
-        if signup and signup[0] == "True":
-            signup_page()
-        else:
-            login_page()
+        # Display the cover_page as the default page
+        cover_page()
 
 if __name__ == '__main__':
     main()
