@@ -114,9 +114,13 @@ def home_page():
     # Dropdown untuk tanggal awal prakiraan
     start_date = pd.Timestamp('2023-10-19')
 
+
+
     # Dropdown untuk tanggal awal
     chosen_date = st.date_input("Pilih Tanggal Mulai Prakiraan", min_value=start_date, max_value=pd.Timestamp('2024-10-19'))
-
+    
+    chosen_date = pd.Timestamp(chosen_date)
+    
     if chosen_date:
         # Dropdown untuk tanggal akhir prakiraan
         end_date = st.date_input("Pilih Batas Akhir Tanggal Prakiraan", max_value=pd.Timestamp('2024-10-19'))
@@ -133,7 +137,7 @@ def home_page():
             pred.index.name = "Tanggal"
 
             # Konversi chosen_date ke datetime64[ns]
-            chosen_date = pd.Timestamp(chosen_date)
+            
 
             # Membagi data prediksi menjadi dua bagian: sebelum dan setelah chosen_date
             pred_before_chosen_date = pred.loc[pred.index <= chosen_date]
